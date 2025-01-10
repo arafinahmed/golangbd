@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"text/template"
@@ -9,10 +11,81 @@ import (
 func main() {
 
 	http.HandleFunc("/", indexHandler)
+	http.HandleFunc("/signup", signupHandler)
+
+	//http.HandleFunc("/signupprocess", formProcess)
 
 	http.Handle("/resources/", http.StripPrefix("/resources/", http.FileServer(http.Dir("assets"))))
 
 	http.ListenAndServe(":8081", nil)
+
+}
+
+func signupHandler(w http.ResponseWriter, r *http.Request) {
+
+	r.ParseForm()
+	fmt.Println(r.Method, "****")
+
+	if r.Method == "GET" {
+
+		tmpl, err := template.ParseFiles("pages/signup.html")
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		tmpl.Execute(w, nil)
+		//fmt.Fprintln(w, ``)
+		return
+
+	}
+
+	if r.Method == "POST" {
+
+		name := r.FormValue("name")
+		username := r.FormValue("username")
+
+		fmt.Println(name)
+		fmt.Println(username)
+		fmt.Println(r.Form)
+
+		row := make(map[string]interface{})
+		row["error"] = 1
+		row["message"] = "ERROR failed"
+
+		js, err := json.Marshal(row)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintln(w, string(js))
+
+		return
+		//fmt.Fprintln(w, "OK.....")
+		//fmt.Fprintln(w, "Successfully received!")
+		//http.Redirect(w, r, "/", http.StatusSeeOther) //303
+
+	}
+
+}
+
+func formProcess(w http.ResponseWriter, r *http.Request) {
+
+	r.ParseForm()
+	fmt.Println(r.Form) // map[string][]string
+
+	// map[ email: [ashik@gmail.com] name:[Ashik] passw:[test321] submitButton:[] username:[ashikn]]
+
+	// for key, val := range r.Form {
+	// 	fmt.Println(key, val)
+	// }
+
+	name := r.FormValue("name")
+	username := r.FormValue("username")
+
+	fmt.Println(name)
+	fmt.Println(username)
 
 }
 
@@ -44,7 +117,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		Faqs    []map[string]interface{}
 	}{
 		Title:   "GoLangBD.COM",
-		TagLine: "GoLang: Easy learning curve", //Simple, Fast, Scalable Programming Language
+		TagLine: "GoLang: Simple, Fast, Scalable Programming Language", //Simple, Fast, Scalable Programming Language
 		Faqs:    faqs,
 	}
 
