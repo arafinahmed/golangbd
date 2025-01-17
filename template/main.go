@@ -3,8 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"text/template"
 )
 
@@ -24,7 +28,7 @@ func main() {
 func signupHandler(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
-	fmt.Println(r.Method, "****")
+	//fmt.Println(r.Method, "****")
 
 	if r.Method == "GET" {
 
@@ -42,12 +46,27 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 
-		name := r.FormValue("name")
-		username := r.FormValue("username")
+		// name := r.FormValue("name")
+		// username := r.FormValue("username")
+		// email := r.FormValue("email")
+		// password := r.FormValue("password")
 
-		fmt.Println(name)
-		fmt.Println(username)
-		fmt.Println(r.Form)
+		mpf, mfh, err := r.FormFile("photo")
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		err = fileUpload(mpf, mfh)
+		fmt.Println(err)
+
+		// fmt.Println(name)
+		// fmt.Println(username)
+		// fmt.Println(email)
+		// fmt.Println(password)
+
+		//fmt.Println(mfh.Header)
+		//fmt.Println(r.Form) // map[email:[saimon@gmail.com] name:[saimon siddiquee] password:[saimon123] submitButton:[] username:[saimon]]
 
 		row := make(map[string]interface{})
 		row["error"] = 1
@@ -68,6 +87,22 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+}
+
+func fileUpload(mpf multipart.File, mfh *multipart.FileHeader) error {
+
+	//file, header, _ := r.FormFile("file")
+	defer mpf.Close()
+	// create a destination file
+	tmpFile := filepath.Join("upload", mfh.Filename)
+	dst, err := os.Create(tmpFile)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+	// upload the file to destination path
+	_, err = io.Copy(dst, mpf)
+	return err
 }
 
 func formProcess(w http.ResponseWriter, r *http.Request) {
