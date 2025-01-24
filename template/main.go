@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 )
 
@@ -27,7 +28,6 @@ func main() {
 
 func signupHandler(w http.ResponseWriter, r *http.Request) {
 
-	r.ParseForm()
 	//fmt.Println(r.Method, "****")
 
 	if r.Method == "GET" {
@@ -46,27 +46,45 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 
-		// name := r.FormValue("name")
-		// username := r.FormValue("username")
-		// email := r.FormValue("email")
-		// password := r.FormValue("password")
-
-		mpf, mfh, err := r.FormFile("photo")
+		err := r.ParseMultipartForm(10 << 20) // 10MB Maximum size
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		err = fileUpload(mpf, mfh)
-		fmt.Println(err)
+		fmt.Println("Form fields:", r.MultipartForm.Value)
+		fmt.Println("File headers:", r.MultipartForm.File)
 
-		// fmt.Println(name)
-		// fmt.Println(username)
-		// fmt.Println(email)
-		// fmt.Println(password)
+		var photoFiles []*multipart.FileHeader
 
-		//fmt.Println(mfh.Header)
-		//fmt.Println(r.Form) // map[email:[saimon@gmail.com] name:[saimon siddiquee] password:[saimon123] submitButton:[] username:[saimon]]
+		for fieldName, files := range r.MultipartForm.File {
+			if strings.HasPrefix(fieldName, "photos") {
+				photoFiles = append(photoFiles, files...)
+			}
+		}
+
+		if len(photoFiles) == 0 {
+			log.Println("No files uploaded")
+			http.Error(w, "No files uploaded", http.StatusBadRequest)
+			return
+		}
+
+		for i, fileHeader := range photoFiles {
+			fmt.Printf("Processing file %d: %s\n", i+1, fileHeader.Filename)
+			file, err := fileHeader.Open()
+			if err != nil {
+				log.Printf("Error opening file %s: %v\n", fileHeader.Filename, err)
+				continue
+			}
+			defer file.Close()
+
+			err = fileUpload(file, fileHeader)
+			if err != nil {
+				log.Printf("Error uploading file %s: %v\n", fileHeader.Filename, err)
+				continue
+			}
+		}
 
 		row := make(map[string]interface{})
 		row["error"] = 1
